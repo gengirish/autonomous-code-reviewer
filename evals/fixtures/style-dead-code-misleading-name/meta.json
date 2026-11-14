@@ -1,0 +1,7 @@
+{
+  "title": "Daily activity digest builder",
+  "description": "First step of NOTIF-33 (daily digest email): builds the digest for one user from their activity events. Sending and scheduling come in the next PR.\n\nEvents from the last 24 hours, newest first, at most 20 per kind.",
+  "language": "go",
+  "tags": ["style", "dead-code", "misleading-name"],
+  "clean": false
+}

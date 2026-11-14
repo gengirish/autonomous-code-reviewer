@@ -1,0 +1,3 @@
+[
+  { "file": "src/components/billing/InvoiceTable.tsx", "lineStart": 6, "lineEnd": 18, "category": "layering-violation", "minSeverity": "medium", "agent": "architecture", "note": "a \"use client\" component imports the Prisma repository directly instead of going through the API/hooks layer (useInvoices), pulling server-only DB code into the client bundle" }
+]

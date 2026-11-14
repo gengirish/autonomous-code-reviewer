@@ -1,0 +1,3 @@
+[
+  { "file": "src/pricing/discounts.ts", "lineStart": 22, "lineEnd": 40, "category": "untested-branch", "minSeverity": "medium", "agent": "coverage", "note": "new loyaltyDiscountCents has five branches (tier, first order, tenure bonus, cap, zero headroom) and the PR adds no tests" }
+]

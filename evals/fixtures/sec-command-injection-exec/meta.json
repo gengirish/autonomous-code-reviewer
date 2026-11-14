@@ -1,0 +1,7 @@
+{
+  "title": "Generate thumbnails for uploaded images",
+  "description": "After an image upload we now create a thumbnail with ImageMagick (`convert`, already in the base image) so the gallery stops downloading full-size originals.\n\nThe width comes from `?thumbWidth=` and is restricted to 64/128/256/512.",
+  "language": "javascript",
+  "tags": ["security", "command-injection", "child-process"],
+  "clean": false
+}

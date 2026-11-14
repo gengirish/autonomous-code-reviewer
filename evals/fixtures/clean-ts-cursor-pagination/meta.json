@@ -1,0 +1,7 @@
+{
+  "title": "Add opaque keyset-pagination cursors",
+  "description": "Groundwork for replacing OFFSET pagination on the activity feed (API-58), which times out past page 200.\n\n`encodeCursor`/`decodeCursor` wrap `(createdAt, id)` in an opaque base64url string and validate it on the way back in; `toPage` turns a `limit + 1` fetch into a page plus next cursor. No endpoint uses it yet.",
+  "language": "typescript",
+  "tags": ["clean", "small"],
+  "clean": true
+}

@@ -1,0 +1,4 @@
+[
+  { "file": "internal/notify/digest.go", "lineStart": 44, "lineEnd": 44, "category": "misleading-name", "minSeverity": "low", "agent": "style", "note": "filterOlderThan keeps the events NEWER than cutoff (its own doc comment says so); the name says the opposite" },
+  { "file": "internal/notify/digest.go", "lineStart": 54, "lineEnd": 67, "category": "dead-code", "minSeverity": "low", "agent": "style", "note": "dedupeByActor is added but never called" }
+]

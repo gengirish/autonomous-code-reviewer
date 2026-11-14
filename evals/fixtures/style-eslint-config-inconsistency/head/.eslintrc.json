@@ -1,0 +1,15 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "import"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
+  "rules": {
+    "no-console": "error",
+    "import/no-default-export": "error",
+    "no-restricted-imports": [
+      "error",
+      { "paths": [{ "name": "moment", "message": "Use date-fns; moment is being removed (ENG-410)." }] }
+    ]
+  },
+  "overrides": [{ "files": ["scripts/**"], "rules": { "no-console": "off" } }]
+}

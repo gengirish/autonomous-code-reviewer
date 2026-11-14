@@ -1,0 +1,2 @@
+# Byte-exact fixtures: pr.patch line content must equal head/ files, so never convert line endings.
+* -text

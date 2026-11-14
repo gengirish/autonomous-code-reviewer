@@ -1,0 +1,7 @@
+{
+  "title": "Refactor VAT lookup into a rule table",
+  "description": "No behaviour change. Replaces the if/elif chain in `tax_for` with a `TaxRule` table so adding a region is a one-line change (needed for the AT/BE launch next sprint), and exposes `rule_for` for the invoice PDF, which prints the rate.\n\nTests are now parametrised over every region and also cover rounding and `rule_for`.",
+  "language": "python",
+  "tags": ["coverage", "refactor", "clean"],
+  "clean": true
+}

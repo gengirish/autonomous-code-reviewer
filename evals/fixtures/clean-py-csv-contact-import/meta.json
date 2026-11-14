@@ -1,0 +1,7 @@
+{
+  "title": "Validate contact CSV imports before saving",
+  "description": "Today a bad row halfway through an upload aborts the import and leaves half the contacts saved (CRM-77). This adds a pure parsing/validation step that reports every problem with the spreadsheet line number, so the UI can show all errors at once and we only write when the whole file is valid.\n\n- required columns: email, first_name, last_name (company and phone optional)\n- emails are normalised to lower case and must be unique within the file\n- files over 10,000 rows are rejected\n\nWiring it into the upload endpoint is the next PR.",
+  "language": "python",
+  "tags": ["clean", "medium"],
+  "clean": true
+}

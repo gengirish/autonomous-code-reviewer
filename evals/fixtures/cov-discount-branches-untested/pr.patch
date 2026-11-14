@@ -1,0 +1,91 @@
+diff --git a/src/checkout/totals.ts b/src/checkout/totals.ts
+index 022189f..ea82f6a 100644
+--- a/src/checkout/totals.ts
++++ b/src/checkout/totals.ts
+@@ -1,5 +1,5 @@
+-import { couponDiscountCents } from "../pricing/discounts";
+-import type { Coupon } from "../pricing/types";
++import { couponDiscountCents, loyaltyDiscountCents } from "../pricing/discounts";
++import type { Coupon, LoyaltyProfile } from "../pricing/types";
+ import type { Cart } from "./types";
+ 
+ export interface Totals {
+@@ -8,8 +8,15 @@ export interface Totals {
+   totalCents: number;
+ }
+ 
+-export function computeTotals(cart: Cart, coupon: Coupon | null): Totals {
++export function computeTotals(
++  cart: Cart,
++  coupon: Coupon | null,
++  loyalty: LoyaltyProfile | null = null,
++  now: Date = new Date(),
++): Totals {
+   const subtotalCents = cart.items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
+-  const discountCents = couponDiscountCents(subtotalCents, coupon);
++  const couponCents = couponDiscountCents(subtotalCents, coupon);
++  const loyaltyCents = loyalty ? loyaltyDiscountCents(subtotalCents, couponCents, loyalty, now) : 0;
++  const discountCents = couponCents + loyaltyCents;
+   return { subtotalCents, discountCents, totalCents: subtotalCents - discountCents };
+ }
+diff --git a/src/pricing/discounts.ts b/src/pricing/discounts.ts
+index b866fde..4a8c2ed 100644
+--- a/src/pricing/discounts.ts
++++ b/src/pricing/discounts.ts
+@@ -1,4 +1,12 @@
+-import type { Coupon } from "./types";
++import type { Coupon, LoyaltyProfile, LoyaltyTier } from "./types";
++
++const TIER_RATE: Record<LoyaltyTier, number> = { none: 0, silver: 0.05, gold: 0.1, platinum: 0.15 };
++const FIRST_ORDER_RATE = 0.1;
++const LONG_TENURE_YEARS = 5;
++const LONG_TENURE_BONUS = 0.02;
++/** Coupon + loyalty together never exceed this share of the subtotal. */
++const MAX_COMBINED_SHARE = 0.3;
++const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+ 
+ /** Discount in cents from a coupon, never more than the subtotal. */
+ export function couponDiscountCents(subtotalCents: number, coupon: Coupon | null): number {
+@@ -6,3 +14,28 @@ export function couponDiscountCents(subtotalCents: number, coupon: Coupon | null
+   const raw = coupon.kind === "percent" ? Math.round((subtotalCents * coupon.percent) / 100) : coupon.amountCents;
+   return Math.min(raw, subtotalCents);
+ }
++
++/**
++ * Loyalty discount in cents. Stacks with a coupon, but coupon + loyalty never exceed
++ * MAX_COMBINED_SHARE of the subtotal: the loyalty part is reduced first.
++ */
++export function loyaltyDiscountCents(
++  subtotalCents: number,
++  couponCents: number,
++  profile: LoyaltyProfile,
++  now: Date,
++): number {
++  if (subtotalCents <= 0) return 0;
++
++  let rate = TIER_RATE[profile.tier];
++  if (profile.completedOrders === 0) {
++    rate = Math.max(rate, FIRST_ORDER_RATE);
++  } else if ((now.getTime() - profile.memberSince.getTime()) / MS_PER_YEAR >= LONG_TENURE_YEARS) {
++    rate += LONG_TENURE_BONUS;
++  }
++
++  const loyalty = Math.round(subtotalCents * rate);
++  const headroom = Math.floor(subtotalCents * MAX_COMBINED_SHARE) - couponCents;
++  if (headroom <= 0) return 0;
++  return Math.min(loyalty, headroom);
++}
+diff --git a/src/pricing/types.ts b/src/pricing/types.ts
+index 147a476..08c28c0 100644
+--- a/src/pricing/types.ts
++++ b/src/pricing/types.ts
+@@ -1 +1,9 @@
+ export type Coupon = { kind: "percent"; percent: number } | { kind: "fixed"; amountCents: number };
++
++export type LoyaltyTier = "none" | "silver" | "gold" | "platinum";
++
++export interface LoyaltyProfile {
++  tier: LoyaltyTier;
++  completedOrders: number;
++  memberSince: Date;
++}

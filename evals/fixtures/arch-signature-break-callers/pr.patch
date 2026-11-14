@@ -1,0 +1,117 @@
+diff --git a/src/lib/retry.js b/src/lib/retry.js
+index ae2c863..a6bceef 100644
+--- a/src/lib/retry.js
++++ b/src/lib/retry.js
+@@ -4,20 +4,24 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+ 
+ /**
+  * Calls fn until it succeeds or the attempts run out, doubling the delay each time.
++ * Errors for which `shouldRetry` returns false are rethrown immediately.
+  *
+  * @template T
+  * @param {() => Promise<T>} fn
+- * @param {number} [attempts=3]
+- * @param {number} [delayMs=100] delay before the second attempt
++ * @param {object} [options]
++ * @param {number} [options.attempts=3]
++ * @param {number} [options.delayMs=100] delay before the second attempt
++ * @param {(err: unknown) => boolean} [options.shouldRetry]
+  * @returns {Promise<T>}
+  */
+-async function retry(fn, attempts = 3, delayMs = 100) {
++async function retry(fn, { attempts = 3, delayMs = 100, shouldRetry = () => true } = {}) {
+   let lastError;
+   for (let i = 0; i < attempts; i++) {
+     try {
+       return await fn();
+     } catch (err) {
+       lastError = err;
++      if (!shouldRetry(err)) throw err;
+       if (i < attempts - 1) await sleep(delayMs * 2 ** i);
+     }
+   }
+diff --git a/src/services/inventory.js b/src/services/inventory.js
+index 27964e1..30023d3 100644
+--- a/src/services/inventory.js
++++ b/src/services/inventory.js
+@@ -4,12 +4,12 @@ const { retry } = require("../lib/retry");
+ const logger = require("../lib/logger");
+ 
+ async function reserveStock(warehouse, sku, qty) {
+-  logger.info("reserving stock", { sku, qty });
++  logger.debug("reserving stock", { sku, qty, warehouse: warehouse.id });
+   return retry(() => warehouse.reserve(sku, qty), 5, 250);
+ }
+ 
+ async function releaseStock(warehouse, reservationId) {
+-  logger.info("releasing stock", { reservationId });
++  logger.debug("releasing stock", { reservationId, warehouse: warehouse.id });
+   await warehouse.release(reservationId);
+ }
+ 
+diff --git a/src/services/payments.js b/src/services/payments.js
+index 7a27b48..b3bb778 100644
+--- a/src/services/payments.js
++++ b/src/services/payments.js
+@@ -3,8 +3,15 @@
+ const { retry } = require("../lib/retry");
+ const logger = require("../lib/logger");
+ 
++/** Declines are final: retrying a declined card only produces duplicate declines. */
++const isTransient = (err) => err.code !== "card_declined" && err.code !== "insufficient_funds";
++
+ async function capturePayment(gateway, paymentId) {
+-  const result = await retry(() => gateway.capture(paymentId), 4, 300);
++  const result = await retry(() => gateway.capture(paymentId), {
++    attempts: 4,
++    delayMs: 300,
++    shouldRetry: isTransient,
++  });
+   logger.info("payment captured", { paymentId, amount: result.amount });
+   return result;
+ }
+diff --git a/test/lib/retry.test.js b/test/lib/retry.test.js
+index 069787d..0917ec8 100644
+--- a/test/lib/retry.test.js
++++ b/test/lib/retry.test.js
+@@ -6,15 +6,34 @@ const { retry } = require("../../src/lib/retry");
+ 
+ test("returns the first successful result", async () => {
+   let calls = 0;
+-  const result = await retry(async () => {
+-    calls++;
+-    if (calls < 2) throw new Error("flaky");
+-    return "ok";
+-  }, 3, 1);
++  const result = await retry(
++    async () => {
++      calls++;
++      if (calls < 2) throw new Error("flaky");
++      return "ok";
++    },
++    { attempts: 3, delayMs: 1 },
++  );
+   assert.equal(result, "ok");
+   assert.equal(calls, 2);
+ });
+ 
+ test("rethrows the last error when attempts run out", async () => {
+-  await assert.rejects(retry(async () => Promise.reject(new Error("down")), 2, 1), /down/);
++  await assert.rejects(retry(async () => Promise.reject(new Error("down")), { attempts: 2, delayMs: 1 }), /down/);
++});
++
++test("does not retry errors rejected by shouldRetry", async () => {
++  let calls = 0;
++  const declined = Object.assign(new Error("declined"), { code: "card_declined" });
++  await assert.rejects(
++    retry(
++      async () => {
++        calls++;
++        throw declined;
++      },
++      { attempts: 5, delayMs: 1, shouldRetry: (err) => err.code !== "card_declined" },
++    ),
++    /declined/,
++  );
++  assert.equal(calls, 1);
+ });

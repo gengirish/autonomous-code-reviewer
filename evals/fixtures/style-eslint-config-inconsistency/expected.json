@@ -1,0 +1,5 @@
+[
+  { "file": "src/jobs/purgeAbandonedCarts.ts", "lineStart": 1, "lineEnd": 1, "category": "lint-config-violation", "minSeverity": "low", "agent": "style", "note": "moment is banned by no-restricted-imports in .eslintrc.json (use date-fns)" },
+  { "file": "src/jobs/purgeAbandonedCarts.ts", "lineStart": 8, "lineEnd": 8, "category": "lint-config-violation", "minSeverity": "low", "agent": "style", "note": "default export violates import/no-default-export; sibling jobs use named exports" },
+  { "file": "src/jobs/purgeAbandonedCarts.ts", "lineStart": 13, "lineEnd": 13, "category": "lint-config-violation", "minSeverity": "low", "agent": "style", "note": "console.log violates no-console; the next lines already use the repo logger" }
+]

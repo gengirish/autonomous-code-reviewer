@@ -1,0 +1,7 @@
+{
+  "title": "Email customers when an invoice is issued",
+  "description": "`finalize()` can now notify the customer by email (FIN-140). Callers opt in by passing `notify_email`; the scheduled invoicing job will pass the billing contact in a follow-up.\n\nAdds `Mailer.send_invoice_issued` and a cached `get_mailer()` built from settings.",
+  "language": "python",
+  "tags": ["architecture", "import-cycle", "coupling"],
+  "clean": false
+}

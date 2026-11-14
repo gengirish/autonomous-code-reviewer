@@ -1,0 +1,62 @@
+diff --git a/app/billing/invoices.py b/app/billing/invoices.py
+index 8ad4b6f..a08c411 100644
+--- a/app/billing/invoices.py
++++ b/app/billing/invoices.py
+@@ -26,12 +26,19 @@ def format_amount(amount: Decimal, currency: str) -> str:
+     return f"{amount:,.2f} {currency}"
+ 
+ 
+-def finalize(invoice: Invoice, today: date) -> Invoice:
+-    """Assigns the invoice number and issue date. An invoice can be finalized once."""
++def finalize(invoice: Invoice, today: date, notify_email: str | None = None) -> Invoice:
++    """Assigns the invoice number and issue date. An invoice can be finalized once.
++
++    When ``notify_email`` is given, the customer is emailed that the invoice was issued.
++    """
+     if invoice.number is not None:
+         raise ValueError("invoice already finalized")
+     if not invoice.lines:
+         raise ValueError("cannot finalize an empty invoice")
+     invoice.number = next_invoice_number(today)
+     invoice.issued_on = today
++    if notify_email is not None:
++        from app.notifications.mailer import get_mailer
++
++        get_mailer().send_invoice_issued(invoice, notify_email)
+     return invoice
+diff --git a/app/notifications/mailer.py b/app/notifications/mailer.py
+index 33c2bc9..45a24b2 100644
+--- a/app/notifications/mailer.py
++++ b/app/notifications/mailer.py
+@@ -3,9 +3,11 @@
+ from __future__ import annotations
+ 
+ import logging
++from functools import lru_cache
+ 
+ from app.billing.invoices import Invoice, format_amount
+-from app.notifications.transport import EmailTransport
++from app.config import load_settings
++from app.notifications.transport import EmailTransport, SmtpTransport
+ 
+ log = logging.getLogger(__name__)
+ 
+@@ -20,3 +22,18 @@ class Mailer:
+         body = f"We received your payment of {format_amount(invoice.total, invoice.currency)}."
+         self._transport.send(self._sender, to, subject, body)
+         log.info("receipt sent", extra={"invoice": invoice.number})
++
++    def send_invoice_issued(self, invoice: Invoice, to: str) -> None:
++        subject = f"Invoice {invoice.number}"
++        body = (
++            f"Invoice {invoice.number} for {format_amount(invoice.total, invoice.currency)} "
++            f"was issued on {invoice.issued_on:%d %B %Y}."
++        )
++        self._transport.send(self._sender, to, subject, body)
++        log.info("invoice issued email sent", extra={"invoice": invoice.number})
++
++
++@lru_cache(maxsize=1)
++def get_mailer() -> Mailer:
++    settings = load_settings()
++    return Mailer(SmtpTransport(settings.smtp_url), settings.mail_sender)

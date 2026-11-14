@@ -1,0 +1,7 @@
+{
+  "title": "Show overdue invoice count on the billing page",
+  "description": "Adds a red \"N overdue\" badge next to the Invoices heading (BILL-97).\n\nThe count comes from a new `countOverdueInvoices` repository function (open invoices whose due date has passed).",
+  "language": "typescript",
+  "tags": ["architecture", "layering-violation", "react"],
+  "clean": false
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Loyalty discounts at checkout",
+  "description": "Implements the loyalty programme from PRICING-212:\n\n- tier rates: silver 5%, gold 10%, platinum 15%\n- first order: at least 10% for everyone\n- members for 5+ years get an extra 2%\n- coupon + loyalty are capped at 30% of the subtotal (loyalty is reduced first)\n\n`computeTotals` now takes the customer's loyalty profile. Manually checked the checkout page with a gold and a first-order account.",
+  "language": "typescript",
+  "tags": ["coverage", "untested-branch", "pricing"],
+  "clean": false
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Prorated refunds for mid-period cancellations",
+  "description": "Customers who cancel mid-period now get the unused days back instead of nothing (SUP-881).\n\nAdds `prorated_refund` with tests for cancelling before, during and after the billing period.",
+  "language": "python",
+  "tags": ["coverage", "weak-test", "billing"],
+  "clean": false
+}

@@ -1,0 +1,3 @@
+[
+  { "file": "src/routes/orders.ts", "lineStart": 24, "lineEnd": 28, "category": "sql-injection", "minSeverity": "high", "agent": "security", "note": "req.query.status is interpolated into the SQL string; only customer_id is parameterised" }
+]

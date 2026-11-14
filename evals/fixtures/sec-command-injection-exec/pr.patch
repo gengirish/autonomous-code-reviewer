@@ -1,0 +1,87 @@
+diff --git a/src/routes/uploads.js b/src/routes/uploads.js
+index 42ad4cf..56324d2 100644
+--- a/src/routes/uploads.js
++++ b/src/routes/uploads.js
+@@ -1,8 +1,10 @@
+ "use strict";
+ 
++const path = require("node:path");
+ const express = require("express");
+ const multer = require("multer");
+ const { requireUser } = require("../middleware/auth");
++const { createThumbnail } = require("../services/thumbnails");
+ 
+ const upload = multer({
+   storage: multer.diskStorage({
+@@ -14,8 +16,14 @@ const upload = multer({
+ 
+ const router = express.Router();
+ 
+-router.post("/uploads", requireUser, upload.single("image"), (req, res) => {
+-  res.status(201).json({ fileName: req.file.filename });
++router.post("/uploads", requireUser, upload.single("image"), async (req, res, next) => {
++  try {
++    const width = Number(req.query.thumbWidth || 256);
++    const thumbnail = await createThumbnail(req.file.filename, width);
++    res.status(201).json({ fileName: req.file.filename, thumbnail: path.basename(thumbnail) });
++  } catch (err) {
++    next(err);
++  }
+ });
+ 
+ module.exports = router;
+diff --git a/src/services/thumbnails.js b/src/services/thumbnails.js
+new file mode 100644
+index 0000000..2cdac97
+--- /dev/null
++++ b/src/services/thumbnails.js
+@@ -0,0 +1,30 @@
++"use strict";
++
++const path = require("node:path");
++const { exec } = require("node:child_process");
++const { promisify } = require("node:util");
++
++const execAsync = promisify(exec);
++
++const UPLOAD_DIR = process.env.UPLOAD_DIR || "/var/app/uploads";
++const THUMB_DIR = path.join(UPLOAD_DIR, "thumbs");
++const ALLOWED_WIDTHS = new Set([64, 128, 256, 512]);
++
++/**
++ * Writes a JPEG thumbnail of an uploaded image using ImageMagick.
++ *
++ * @param {string} fileName name of the stored upload inside UPLOAD_DIR
++ * @param {number} width target width in pixels, one of ALLOWED_WIDTHS
++ * @returns {Promise<string>} absolute path of the thumbnail
++ */
++async function createThumbnail(fileName, width) {
++  if (!ALLOWED_WIDTHS.has(width)) {
++    throw new RangeError(`unsupported thumbnail width: ${width}`);
++  }
++  const source = path.join(UPLOAD_DIR, fileName);
++  const target = path.join(THUMB_DIR, `${width}-${path.parse(fileName).name}.jpg`);
++  await execAsync(`convert "${source}" -auto-orient -thumbnail ${width}x -strip "${target}"`, { timeout: 15_000 });
++  return target;
++}
++
++module.exports = { createThumbnail, ALLOWED_WIDTHS };
+diff --git a/test/services/thumbnails.test.js b/test/services/thumbnails.test.js
+new file mode 100644
+index 0000000..7f42c77
+--- /dev/null
++++ b/test/services/thumbnails.test.js
+@@ -0,0 +1,13 @@
++"use strict";
++
++const test = require("node:test");
++const assert = require("node:assert/strict");
++const { createThumbnail, ALLOWED_WIDTHS } = require("../../src/services/thumbnails");
++
++test("rejects widths outside the allow-list", async () => {
++  await assert.rejects(createThumbnail("1700000000000-photo.png", 300), RangeError);
++});
++
++test("allow-list contains the sizes the web client requests", () => {
++  assert.deepEqual([...ALLOWED_WIDTHS].sort((a, b) => a - b), [64, 128, 256, 512]);
++});

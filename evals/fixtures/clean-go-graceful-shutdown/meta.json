@@ -1,0 +1,7 @@
+{
+  "title": "Graceful shutdown for the API server",
+  "description": "Deploys currently cut off in-flight requests: on SIGTERM the process exits immediately and clients see connection resets (OPS-301).\n\n`server.Run` now stops accepting connections on SIGINT/SIGTERM and gives in-flight requests up to 20s to finish (our cluster kills pods after 30s). Tests cover draining an in-flight request and reporting a port that is already taken.",
+  "language": "go",
+  "tags": ["clean", "medium"],
+  "clean": true
+}

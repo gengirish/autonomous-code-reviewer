@@ -1,0 +1,77 @@
+diff --git a/src/jobs/index.ts b/src/jobs/index.ts
+index 53a7bae..ff4a513 100644
+--- a/src/jobs/index.ts
++++ b/src/jobs/index.ts
+@@ -1,3 +1,4 @@
++import purgeAbandonedCarts from "./purgeAbandonedCarts";
+ import { sendCartReminders } from "./sendCartReminders";
+ import { syncExchangeRates } from "./syncExchangeRates";
+ import type { JobDefinition } from "./types";
+@@ -5,4 +6,5 @@ import type { JobDefinition } from "./types";
+ export const jobs: JobDefinition[] = [
+   { name: "send-cart-reminders", schedule: "0 * * * *", run: () => sendCartReminders() },
+   { name: "sync-exchange-rates", schedule: "15 6 * * *", run: () => syncExchangeRates() },
++  { name: "purge-abandoned-carts", schedule: "30 3 * * *", run: () => purgeAbandonedCarts() },
+ ];
+diff --git a/src/jobs/purgeAbandonedCarts.test.ts b/src/jobs/purgeAbandonedCarts.test.ts
+new file mode 100644
+index 0000000..e4f5267
+--- /dev/null
++++ b/src/jobs/purgeAbandonedCarts.test.ts
+@@ -0,0 +1,33 @@
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { cartRepository } from "../repositories/cartRepository";
++import purgeAbandonedCarts from "./purgeAbandonedCarts";
++
++vi.mock("../repositories/cartRepository", () => ({
++  cartRepository: { findIdsUpdatedBefore: vi.fn(), deleteMany: vi.fn() },
++}));
++
++const repo = vi.mocked(cartRepository);
++
++describe("purgeAbandonedCarts", () => {
++  beforeEach(() => {
++    vi.resetAllMocks();
++  });
++
++  it("deletes abandoned carts last updated more than 30 days ago", async () => {
++    repo.findIdsUpdatedBefore.mockResolvedValue(["c1", "c2"]);
++    repo.deleteMany.mockResolvedValue(2);
++
++    const deleted = await purgeAbandonedCarts(new Date("2026-06-30T03:30:00Z"));
++
++    expect(repo.findIdsUpdatedBefore).toHaveBeenCalledWith(new Date("2026-05-31T03:30:00Z"), { status: "abandoned" });
++    expect(repo.deleteMany).toHaveBeenCalledWith(["c1", "c2"]);
++    expect(deleted).toBe(2);
++  });
++
++  it("does nothing when there is nothing to purge", async () => {
++    repo.findIdsUpdatedBefore.mockResolvedValue([]);
++
++    expect(await purgeAbandonedCarts()).toBe(0);
++    expect(repo.deleteMany).not.toHaveBeenCalled();
++  });
++});
+diff --git a/src/jobs/purgeAbandonedCarts.ts b/src/jobs/purgeAbandonedCarts.ts
+new file mode 100644
+index 0000000..3c71988
+--- /dev/null
++++ b/src/jobs/purgeAbandonedCarts.ts
+@@ -0,0 +1,17 @@
++import moment from "moment";
++import { logger } from "../lib/logger";
++import { cartRepository } from "../repositories/cartRepository";
++
++/** Abandoned carts older than this are deleted; reminders stop after 7 days. */
++const ABANDONED_RETENTION_DAYS = 30;
++
++export default async function purgeAbandonedCarts(now: Date = new Date()): Promise<number> {
++  const cutoff = moment(now).subtract(ABANDONED_RETENTION_DAYS, "days").toDate();
++  const ids = await cartRepository.findIdsUpdatedBefore(cutoff, { status: "abandoned" });
++  if (ids.length === 0) return 0;
++
++  console.log(`purging ${ids.length} abandoned carts last updated before ${cutoff.toISOString()}`);
++  const deleted = await cartRepository.deleteMany(ids);
++  logger.info("abandoned carts purged", { requested: ids.length, deleted });
++  return deleted;
++}

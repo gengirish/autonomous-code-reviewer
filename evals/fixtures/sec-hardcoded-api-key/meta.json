@@ -1,0 +1,7 @@
+{
+  "title": "Show Courierly shipping quotes at checkout",
+  "description": "Adds a small Courierly client and wires its settings into `Settings`.\n\nThe key falls back to a default so local dev and the preview environments work without extra setup; production sets `COURIERLY_API_KEY` as usual.",
+  "language": "python",
+  "tags": ["security", "hardcoded-secret", "config"],
+  "clean": false
+}

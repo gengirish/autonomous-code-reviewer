@@ -1,0 +1,7 @@
+{
+  "title": "Add order listing endpoint with status filter and sorting",
+  "description": "Adds `GET /orders` so the account page can list a customer's orders.\n\n- optional `status` filter (`pending`, `paid`, `shipped`, `cancelled`)\n- `sort` limited to an allow-list of columns, newest first\n- page size defaults to 20, capped at 100\n\nTests cover the default listing, the filter, the sort fallback and the page-size cap.",
+  "language": "typescript",
+  "tags": ["security", "sql-injection", "express"],
+  "clean": false
+}
