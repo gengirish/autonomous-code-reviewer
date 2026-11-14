@@ -35,7 +35,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   request-review:
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.fork == false   # forks use ai-review-fork.yml
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

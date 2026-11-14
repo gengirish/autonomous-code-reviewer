@@ -123,20 +123,23 @@ describe("publish", () => {
     expect(JSON.stringify(lines)).not.toContain("SQL injection");
   });
 
-  it("propagates a 422 from the retry (no second retry)", async () => {
+  it("a 422 on the retry is permanent (no second retry)", async () => {
     const api = new FakeGitHubApi().on(CREATE, () => {
       throw new FakeRequestError(422);
     });
     const { logger } = captureLogger();
-    await expect(createGitHubPublisher(api, { logger }).publish(payload())).rejects.toMatchObject({ status: 422 });
+    const err = await createGitHubPublisher(api, { logger }).publish(payload()).catch((e: unknown) => e);
+    expect(isPermanent(err)).toBe(true);
+    expect((err as Error).cause).toMatchObject({ status: 422 });
     expect(api.calls).toHaveLength(2);
   });
 
-  it("does not retry a 422 when there were no inline comments", async () => {
+  it("a 422 with no inline comments is permanent and not retried (e.g. force-pushed commit)", async () => {
     const api = new FakeGitHubApi().on(CREATE, () => {
       throw new FakeRequestError(422);
     });
-    await expect(createGitHubPublisher(api).publish(payload({ comments: [] }))).rejects.toMatchObject({ status: 422 });
+    const err = await createGitHubPublisher(api).publish(payload({ comments: [] })).catch((e: unknown) => e);
+    expect(isPermanent(err)).toBe(true);
     expect(api.calls).toHaveLength(1);
   });
 

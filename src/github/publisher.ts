@@ -1,4 +1,5 @@
 import type { ReviewComment, ReviewPublisher } from "../core/ports.js";
+import { PermanentError } from "../core/errors.js";
 import { logger as defaultLogger, type Logger } from "../core/logger.js";
 import { statusOf, type GitHubApi } from "./api.js";
 import { findLastMarker, hasMarkerForSha, reviewMarker } from "./marker.js";
@@ -141,7 +142,10 @@ export function createGitHubPublisher(api: GitHubApi, opts: { logger?: Logger } 
         const { data } = await post(body, review.comments.map(toApiComment));
         return { reviewId: data.id, inlinePosted: review.comments.length };
       } catch (err) {
-        if (statusOf(err) !== 422 || review.comments.length === 0) throw err;
+        if (statusOf(err) !== 422) throw err;
+        // A 422 without inline comments (e.g. commit_id no longer in the PR after a force-push)
+        // cannot be fixed by retrying: fail the job instead of burning attempts.
+        if (review.comments.length === 0) throw unpostable(err);
         log.warn(
           {
             owner: ref.owner,
@@ -153,11 +157,19 @@ export function createGitHubPublisher(api: GitHubApi, opts: { logger?: Logger } 
           },
           "inline comments rejected (422); retrying once with comments folded into the body",
         );
-        const { data } = await post(foldComments(body, review.comments), []);
-        return { reviewId: data.id, inlinePosted: 0 };
+        try {
+          const { data } = await post(foldComments(body, review.comments), []);
+          return { reviewId: data.id, inlinePosted: 0 };
+        } catch (retryErr) {
+          throw statusOf(retryErr) === 422 ? unpostable(retryErr) : retryErr;
+        }
       }
     },
   };
+}
+
+function unpostable(err: unknown): PermanentError {
+  return new PermanentError(`GitHub rejected the review (422): ${JSON.stringify(githubErrorsOf(err))}`, { cause: err });
 }
 
 /** GitHub's `errors` array (or message) from a RequestError, for logs. No request bodies. */
