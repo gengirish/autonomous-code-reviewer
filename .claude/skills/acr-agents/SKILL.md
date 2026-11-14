@@ -17,18 +17,17 @@ How the call is made (model, caching, refusals): `acr-llm`.
 
 ```
 src/agents/
-  base.ts              runAgent(agent, ctx) → AgentReport  (render → callStructured → validate lines)
-  security.ts          hints + role config
-  style.ts
-  coverage.ts
-  architecture.ts
-  hints/secrets.ts     deterministic pre-scans
+  index.ts             export const runAgent: RunAgent
+  base.ts              runAgent (render → callStructured → post-checks), checkFindings, roleInstructions, evidence matching
+  prompts.ts           loads prompts/*.md once (import.meta.url), normalises to LF
   prompts/_shared.md   SHARED system prompt, identical for all 4 (cache prefix)
-  prompts/security.md  role prompt, sent as a mid-conversation system message
-  prompts/style.md
-  prompts/coverage.md
-  prompts/architecture.md
+  prompts/<agent>.md   role prompt per agent, sent as a mid-conversation system message
+  hints/index.ts       buildHints(agent, ctx): deterministic pre-scans appended to the ROLE message
+  hints/{secrets,code-patterns,security,style,coverage,architecture,util}.ts
+                       hint text is sanitised (it's untrusted PR content inside a system message);
+                       secrets are reported by file:line only, never quoted
 src/schemas/finding.ts
+src/llm/anthropic-client.ts   AnthropicLlmClient (see acr-llm)
 ```
 
 ## Schema (src/schemas/finding.ts): one schema for all four agents
@@ -87,8 +86,9 @@ Hints are **evidence for the agent, not findings**. A regex hit on a test fixtur
 
 ## Changing or adding an agent
 
-1. Edit or add `prompts/<agent>.md` and `<agent>.ts`. Register it in `AGENTS` (`src/agents/index.ts`)
-   and the `AgentReport.agent` enum.
+1. Edit or add `prompts/<agent>.md` and `hints/<agent>.ts` (wire it into `hints/index.ts`). Adding an agent
+   also means extending the `AgentName` enum in `src/schemas/common.ts` (a frozen contract, so update the
+   queue flow, renderer table and evals with it).
 2. Add or extend eval fixtures for the new behaviour (`acr-evals`). A behaviour change with no
    fixture isn't measurable.
 3. `npm test` (prompt rendering snapshot), then **ask the user**, then `npm run eval`. Compare
