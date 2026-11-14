@@ -1,0 +1,68 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderReview > renders a mixed review (snapshot) > body 1`] = `
+"## 🤖 AI Review: Changes requested
+
+**1 high · 2 medium · 1 nit** across 3 files · reviewed \`aaaaaaa\`
+
+> Adds a user lookup endpoint and its route.
+
+| Agent | Raised | Kept | Top issue |
+|---|---|---|---|
+| 🔒 Security | 1 | 1 | SQL built from request parameters (\`src/db/users.ts:42\`) |
+| 🎨 Style | 2 | 1 | Rename \`b\` (\`src/db/users.ts:41\`) |
+| 🧪 Coverage | – | – | unavailable |
+| 🏛️ Architecture | 3 | 3 | SQL built from request parameters (\`src/db/users.ts:42\`) |
+
+<details><summary>More findings (2)</summary>
+
+- **[medium · architecture · god-module]** Module keeps growing · \`src/core/big.ts:5\`
+  User input is concatenated into the query string.
+- **[nit · style · naming]** Rename \`b\` · \`src/db/users.ts:41\`
+  User input is concatenated into the query string.
+
+</details>
+
+<details><summary>Not reviewed (3)</summary>
+
+- \`package-lock.json\`: lockfile
+- \`assets/logo.png\`: binary
+- 🧪 Coverage agent unavailable: its checks did not run (or did not finish for every file)
+
+</details>
+
+<sub>Autonomous Code Reviewer · findings are suggestions; humans decide.</sub>
+<!-- ai-reviewer run=octo__demo__7__aaaaaaaaaaaa sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa -->"
+`;
+
+exports[`renderReview > renders a mixed review (snapshot) > comments 1`] = `
+[
+  {
+    "body": "**[high · security, architecture · sql-injection]** SQL built from request parameters
+
+User input is concatenated into the query string.
+
+\`\`\`suggestion
+const q = sql\`SELECT * FROM users WHERE id = \${req.params.id}\`;
+\`\`\`",
+    "line": 42,
+    "path": "src/db/users.ts",
+    "side": "RIGHT",
+  },
+  {
+    "body": "**[medium · architecture · layering]** Route handler | talks to the DB directly
+
+The handler imports the pool.
+Move it behind the repository.
+
+\`\`\`suggestion
+const user = await users.find(id);
+return reply.send(user);
+\`\`\`",
+    "line": 14,
+    "path": "src/api/routes.ts",
+    "side": "RIGHT",
+    "startLine": 12,
+  },
+]
+`;
