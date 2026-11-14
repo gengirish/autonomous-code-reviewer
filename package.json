@@ -23,11 +23,13 @@
     "@bull-board/api": "^9.13.1",
     "@bull-board/fastify": "^9.13.1",
     "@octokit/app": "^16.1.4",
+    "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "bullmq": "^6.7.6",
     "fastify": "^5.12.8",
     "ioredis": "^6.0.0",
     "jose": "^6.2.17",
+    "pg": "^8.23.1",
     "pino": "^10.4.0",
     "web-tree-sitter": "^0.27.2",
     "zod": "^4.6.7"
@@ -35,6 +37,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "eslint": "^10.15.0",
     "pino-pretty": "^13.2.0",
     "prisma": "^7.10.1",
