@@ -1,0 +1,16 @@
+Session Deliverable: Portfolio P2 — Autonomous Code Reviewer
+W06 SESSION DELIVERABLE · Portfolio: Multi-Agent
+
+🏆 Portfolio P2 — Autonomous Code Reviewer
+
+4 specialised agents (Security, Style, Coverage, Architecture) debate every PR in parallel.
+GitHub Actions webhook → BullMQ → LLM-as-judge verdict → GitHub review comment. Fly.io deploy.
+
+ARCHITECTURE
+Trigger: GitHub Actions webhook fires on pull_request, queues job in BullMQ
+Parser: Tree-sitter parses diff into AST for structured code analysis
+Agent Swarm: 4 parallel agents — Security · Style & Lint · Test Coverage · Architecture
+Judge: Claude LLM-as-judge reads 4 verdicts, synthesises consensus, assigns severity
+Output: GitHub REST API posts structured review comment with per-agent breakdown
+TECH STACK: GitHub Actions · Tree-sitter · LLM-as-judge · BullMQ · GitHub REST API
+BUSINESS IMPACT: Cuts code review time by 70%

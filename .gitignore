@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# eval run outputs (baseline.json is committed)
+evals/results/
+
+# personal Claude Code settings
+.claude/settings.local.json
+
+.DS_Store
+Thumbs.db
