@@ -24,10 +24,9 @@ its gate with ACR-specific stations.**
 
 ## Prerequisite: git
 
-The project folder isn't a git repository yet. Phase 0 must run `git init`, create
-`.gitignore` (node_modules, dist, .env*, evals/results/), make an initial commit, and
-create a GitHub repo, **after confirming with the user**. Parallel subagents need git
-worktrees, so do **not** run parallel work in one checkout.
+The repo is initialised locally on `main`, with `.gitignore` in place. There's **no remote
+yet**: creating the GitHub repo and pushing are part of Phase 0, **after confirming with the
+user**. Parallel subagents need git worktrees, so do **not** run parallel work in one checkout.
 
 ## ACR done-gate (per feature)
 
