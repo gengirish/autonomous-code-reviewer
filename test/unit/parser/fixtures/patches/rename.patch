@@ -1,0 +1,13 @@
+diff --git a/src/old/helpers.ts b/src/utils/helpers.ts
+similarity index 88%
+rename from src/old/helpers.ts
+rename to src/utils/helpers.ts
+index 1111111..2222222 100644
+--- a/src/old/helpers.ts
++++ b/src/utils/helpers.ts
+@@ -1,4 +1,4 @@
+ export function slugify(s: string): string {
+-  return s.toLowerCase();
++  return s.toLowerCase().replace(/\s+/g, "-");
+ }
+ 

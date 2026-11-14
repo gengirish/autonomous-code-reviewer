@@ -1,0 +1,12 @@
+import React, { useState } from "react";
+
+interface Props {
+  label: string;
+}
+
+export function Counter({ label }: Props) {
+  const [n, setN] = useState(0);
+  return <button onClick={() => setN(n + 1)}>{label}: {n}</button>;
+}
+
+export const Badge = ({ label }: Props) => <span className="badge">{label}</span>;

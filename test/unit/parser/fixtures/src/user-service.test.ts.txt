@@ -1,0 +1,8 @@
+import { describe, expect, it } from "vitest";
+import { UserService } from "./user-service.js";
+
+describe("UserService", () => {
+  it("finds nothing", async () => {
+    expect(await new UserService().find("x")).toBeNull();
+  });
+});
