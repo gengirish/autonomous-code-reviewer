@@ -1,0 +1,7 @@
+@@ -1,6 +0,0 @@
+-import os
+-
+-
+-def cleanup(path):
+-    """Remove a temp dir."""
+-    os.rmdir(path)

@@ -1,0 +1,14 @@
+const path = require("node:path");
+
+class Cache {
+  get(key) {
+    return this.store[key];
+  }
+}
+
+const render = function (items) {
+  return items.map((i) => <li>{i}</li>);
+};
+
+module.exports = { Cache, render };
+exports.helper = () => path.sep;

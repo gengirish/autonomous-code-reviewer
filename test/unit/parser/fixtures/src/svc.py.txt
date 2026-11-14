@@ -1,0 +1,22 @@
+import os
+import json as j
+from .models import User
+from . import util
+
+
+def load(path):
+    with open(path) as f:
+        return j.load(f)
+
+
+class UserService:
+    def __init__(self, repo):
+        self.repo = repo
+
+    @staticmethod
+    def find(user_id):
+        return User.get(user_id)
+
+
+def _private():
+    return os.getcwd()

@@ -1,0 +1,23 @@
+package server
+
+import (
+	"fmt"
+	log "github.com/sirupsen/logrus"
+)
+
+type Server struct {
+	addr string
+}
+
+func New(addr string) *Server {
+	return &Server{addr: addr}
+}
+
+func (s *Server) Handle(path string) error {
+	log.Info("handling")
+	return fmt.Errorf("not found: %s", path)
+}
+
+func helper() {}
+
+const MaxConns = 10
