@@ -1,0 +1,121 @@
+// ACR permanent record: runs, agent reports, findings, LLM usage/cost, feedback.
+// See .claude/skills/acr-database/SKILL.md. Never store prompts, code contents or raw model output.
+// The connection URL lives in prisma.config.ts (Prisma 7); the runtime client uses @prisma/adapter-pg.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/db/generated"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  PUBLISHED
+  SUPERSEDED
+  SKIPPED
+  FAILED
+}
+
+model ReviewRun {
+  /// = runId from acr-queue (runKey: owner__repo__pr__sha12)
+  id         String        @id
+  owner      String
+  repo       String
+  pr         Int
+  headSha    String
+  status     RunStatus     @default(QUEUED)
+  /// REQUEST_CHANGES | COMMENT | APPROVE
+  verdict    String?
+  /// GitHub review id
+  reviewId   BigInt?
+  chunks     Int           @default(1)
+  costUsd    Decimal?      @db.Decimal(10, 4)
+  latencyMs  Int?
+  error      String?
+  createdAt  DateTime      @default(now())
+  finishedAt DateTime?
+  reports    AgentReport[]
+  findings   Finding[]
+  llmCalls   LlmCall[]
+
+  @@unique([owner, repo, pr, headSha])
+  @@index([owner, repo, pr])
+  @@index([status, createdAt])
+}
+
+model AgentReport {
+  id      String    @id @default(cuid())
+  runId   String
+  run     ReviewRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  /// security | style | coverage | architecture
+  agent   String
+  chunk   Int       @default(0)
+  /// ok | failed | refused | skipped
+  status  String
+  summary String?
+
+  @@unique([runId, agent, chunk])
+  @@index([runId])
+}
+
+model Finding {
+  id              String     @id @default(cuid())
+  runId           String
+  run             ReviewRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  sourceAgents    String[]
+  file            String
+  line            Int
+  category        String
+  agentSeverity   String
+  finalSeverity   String
+  kept            Boolean
+  dropReason      String?
+  inline          Boolean    @default(false)
+  githubCommentId BigInt?
+  title           String
+  feedback        Feedback[]
+
+  @@index([runId])
+  @@index([category])
+  @@index([githubCommentId])
+}
+
+model LlmCall {
+  id               String    @id @default(cuid())
+  runId            String
+  run              ReviewRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  /// agent name or "judge"
+  role             String
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int
+  cacheWriteTokens Int
+  stopReason       String
+  latencyMs        Int
+  costUsd          Decimal   @db.Decimal(10, 5)
+  createdAt        DateTime  @default(now())
+
+  @@index([runId])
+}
+
+model Feedback {
+  id         String   @id @default(cuid())
+  findingId  String
+  finding    Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  /// "+1" | "-1"
+  reaction   String
+  /// login only; no other PII
+  githubUser String
+  createdAt  DateTime @default(now())
+
+  @@unique([findingId, githubUser, reaction])
+}
