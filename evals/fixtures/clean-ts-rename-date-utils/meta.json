@@ -1,0 +1,7 @@
+{
+  "title": "Rename utils/date to utils/dates, add isSameUtcDay, drop legacyFormat",
+  "description": "Housekeeping before the dashboard work:\n\n- `src/utils/date.ts` → `src/utils/dates.ts` to match `strings.ts`/`numbers.ts`; both importers updated\n- new `isSameUtcDay`, used by the stats endpoint to flag today's (partial) bucket for the dashboard\n- deletes `legacyFormat.ts`: its last caller, the v1 CSV export, was removed in March (`git grep formatLegacyDate` is empty)",
+  "language": "typescript",
+  "tags": ["clean", "rename", "deletion", "multi-file"],
+  "clean": true
+}

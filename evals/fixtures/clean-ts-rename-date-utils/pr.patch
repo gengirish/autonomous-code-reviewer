@@ -1,0 +1,99 @@
+diff --git a/src/api/handlers/stats.ts b/src/api/handlers/stats.ts
+index 650bdd0..0bac8ef 100644
+--- a/src/api/handlers/stats.ts
++++ b/src/api/handlers/stats.ts
+@@ -1,13 +1,21 @@
+ import type { Request, Response } from "express";
+ import { ordersSince } from "../../orders/queries";
+ import { dailyRevenue } from "../../reports/daily";
+-import { startOfUtcDay } from "../../utils/date";
++import { isSameUtcDay, startOfUtcDay } from "../../utils/dates";
+ 
+ const DEFAULT_WINDOW_DAYS = 30;
+ 
+ export async function getRevenueStats(req: Request, res: Response): Promise<void> {
+   const days = Math.min(Math.max(Math.trunc(Number(req.query.days)) || DEFAULT_WINDOW_DAYS, 1), 365);
+-  const since = startOfUtcDay(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
++  const now = new Date();
++  const since = startOfUtcDay(new Date(now.getTime() - days * 24 * 60 * 60 * 1000));
+   const orders = await ordersSince(req.user.accountId, since);
+-  res.json({ since: since.toISOString(), days: dailyRevenue(orders) });
++  const revenue = dailyRevenue(orders);
++  const last = revenue.at(-1);
++  res.json({
++    since: since.toISOString(),
++    days: revenue,
++    // today's bucket is still filling up; the dashboard greys it out
++    todayIsPartial: last !== undefined && isSameUtcDay(new Date(`${last.day}T00:00:00Z`), now),
++  });
+ }
+diff --git a/src/reports/daily.ts b/src/reports/daily.ts
+index 9faf81c..d0ff8a4 100644
+--- a/src/reports/daily.ts
++++ b/src/reports/daily.ts
+@@ -1,5 +1,5 @@
+ import type { OrderSummary } from "../orders/types";
+-import { toUtcDayKey } from "../utils/date";
++import { toUtcDayKey } from "../utils/dates";
+ 
+ export interface DailyRevenue {
+   day: string;
+diff --git a/src/utils/date.test.ts b/src/utils/dates.test.ts
+similarity index 65%
+rename from src/utils/date.test.ts
+rename to src/utils/dates.test.ts
+index b134949..a7343ec 100644
+--- a/src/utils/date.test.ts
++++ b/src/utils/dates.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from "vitest";
+-import { startOfUtcDay, toUtcDayKey, utcDaysBetween } from "./date";
++import { isSameUtcDay, startOfUtcDay, toUtcDayKey, utcDaysBetween } from "./dates";
+ 
+ describe("date utils", () => {
+   it("startOfUtcDay drops the time of day", () => {
+@@ -11,6 +11,11 @@ describe("date utils", () => {
+     expect(utcDaysBetween(new Date("2026-03-05T00:00:00Z"), new Date("2026-03-01T00:00:00Z"))).toBe(-4);
+   });
+ 
++  it("isSameUtcDay compares UTC calendar days", () => {
++    expect(isSameUtcDay(new Date("2026-03-01T00:00:00Z"), new Date("2026-03-01T23:59:59Z"))).toBe(true);
++    expect(isSameUtcDay(new Date("2026-03-01T23:59:59Z"), new Date("2026-03-02T00:00:00Z"))).toBe(false);
++  });
++
+   it("toUtcDayKey formats as YYYY-MM-DD", () => {
+     expect(toUtcDayKey(new Date("2026-12-31T23:30:00Z"))).toBe("2026-12-31");
+   });
+diff --git a/src/utils/date.ts b/src/utils/dates.ts
+similarity index 80%
+rename from src/utils/date.ts
+rename to src/utils/dates.ts
+index 070fa7c..0df96af 100644
+--- a/src/utils/date.ts
++++ b/src/utils/dates.ts
+@@ -10,6 +10,11 @@ export function utcDaysBetween(from: Date, to: Date): number {
+   return Math.round((startOfUtcDay(to).getTime() - startOfUtcDay(from).getTime()) / MS_PER_DAY);
+ }
+ 
++/** True when both instants fall on the same UTC calendar day. */
++export function isSameUtcDay(a: Date, b: Date): boolean {
++  return utcDaysBetween(a, b) === 0;
++}
++
+ /** `YYYY-MM-DD` in UTC, the format our reports and the stats API use as a day key. */
+ export function toUtcDayKey(date: Date): string {
+   return date.toISOString().slice(0, 10);
+diff --git a/src/utils/legacyFormat.ts b/src/utils/legacyFormat.ts
+deleted file mode 100644
+index 3a42af0..0000000
+--- a/src/utils/legacyFormat.ts
++++ /dev/null
+@@ -1,8 +0,0 @@
+-/**
+- * @deprecated Kept for the v1 CSV export, which was removed in March. Use toUtcDayKey.
+- */
+-export function formatLegacyDate(date: Date): string {
+-  const dd = String(date.getUTCDate()).padStart(2, "0");
+-  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+-  return `${dd}/${mm}/${date.getUTCFullYear()}`;
+-}

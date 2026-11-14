@@ -1,0 +1,64 @@
+diff --git a/app/billing/refunds.py b/app/billing/refunds.py
+index 6ffbc27..712d025 100644
+--- a/app/billing/refunds.py
++++ b/app/billing/refunds.py
+@@ -4,7 +4,9 @@ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+ from datetime import date
+-from decimal import Decimal
++from decimal import ROUND_HALF_EVEN, Decimal
++
++_CENT = Decimal("0.01")
+ 
+ 
+ @dataclass(frozen=True)
+@@ -16,3 +18,15 @@ class Subscription:
+ 
+ def full_refund(sub: Subscription) -> Decimal:
+     return sub.plan_price
++
++
++def prorated_refund(sub: Subscription, cancelled_on: date) -> Decimal:
++    """Refund for the unused days of the current period, rounded to the cent."""
++    if cancelled_on <= sub.period_start:
++        return full_refund(sub)
++    if cancelled_on >= sub.period_end:
++        return Decimal("0.00")
++    total_days = (sub.period_end - sub.period_start).days
++    unused_days = (sub.period_end - cancelled_on).days
++    amount = sub.plan_price * Decimal(unused_days) / Decimal(total_days)
++    return amount.quantize(_CENT, rounding=ROUND_HALF_EVEN)
+diff --git a/tests/billing/test_refunds.py b/tests/billing/test_refunds.py
+index 165946b..e04c5fe 100644
+--- a/tests/billing/test_refunds.py
++++ b/tests/billing/test_refunds.py
+@@ -1,7 +1,7 @@
+ from datetime import date
+ from decimal import Decimal
+ 
+-from app.billing.refunds import Subscription, full_refund
++from app.billing.refunds import Subscription, full_refund, prorated_refund
+ 
+ 
+ def _monthly(price: Decimal) -> Subscription:
+@@ -10,3 +10,19 @@ def _monthly(price: Decimal) -> Subscription:
+ 
+ def test_full_refund_returns_plan_price():
+     assert full_refund(_monthly(Decimal("30.00"))) == Decimal("30.00")
++
++
++def test_prorated_refund_before_period_start_is_full_refund():
++    assert prorated_refund(_monthly(Decimal("30.00")), date(2026, 2, 27)) == Decimal("30.00")
++
++
++def test_prorated_refund_mid_period():
++    sub = _monthly(Decimal("30.00"))
++    refund = prorated_refund(sub, date(2026, 3, 16))
++    assert refund is not None
++    assert isinstance(refund, Decimal)
++
++
++def test_prorated_refund_after_period_end():
++    sub = _monthly(Decimal("30.00"))
++    prorated_refund(sub, date(2026, 4, 2))

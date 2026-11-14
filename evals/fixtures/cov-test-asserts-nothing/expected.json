@@ -1,0 +1,4 @@
+[
+  { "file": "tests/billing/test_refunds.py", "lineStart": 19, "lineEnd": 23, "category": "weak-test", "minSeverity": "medium", "agent": "coverage", "note": "only asserts the result is a non-None Decimal; the proration arithmetic and rounding are never checked" },
+  { "file": "tests/billing/test_refunds.py", "lineStart": 26, "lineEnd": 28, "category": "weak-test", "minSeverity": "medium", "agent": "coverage", "note": "calls prorated_refund and asserts nothing, so the after-period-end branch is effectively untested" }
+]

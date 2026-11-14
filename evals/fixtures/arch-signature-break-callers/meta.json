@@ -1,0 +1,7 @@
+{
+  "title": "retry(): options object and shouldRetry predicate",
+  "description": "`retry` now takes an options object (`attempts`, `delayMs`, `shouldRetry`) instead of positional arguments, so callers can stop retrying on errors that will never succeed.\n\n- payments: card declines are no longer retried (we were sending 4 declines per failed checkout)\n- inventory: stock reservation logs moved to debug level, they were 30% of our log volume\n- tests updated for the new signature",
+  "language": "javascript",
+  "tags": ["architecture", "api-break", "caller-not-updated"],
+  "clean": false
+}

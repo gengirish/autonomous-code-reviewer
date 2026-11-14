@@ -1,0 +1,121 @@
+diff --git a/internal/notify/digest.go b/internal/notify/digest.go
+new file mode 100644
+index 0000000..e431093
+--- /dev/null
++++ b/internal/notify/digest.go
+@@ -0,0 +1,67 @@
++package notify
++
++import (
++	"sort"
++	"time"
++)
++
++// Event is a single activity item that can appear in a user's daily digest.
++type Event struct {
++	ID         string
++	Kind       string
++	Actor      string
++	OccurredAt time.Time
++}
++
++// Digest groups a user's recent events by kind.
++type Digest struct {
++	GeneratedAt time.Time
++	ByKind      map[string][]Event
++	Total       int
++}
++
++// maxEventsPerKind keeps a noisy kind (for example "comment") from crowding out the rest.
++const maxEventsPerKind = 20
++
++// BuildDigest collects the events from the 24 hours before now, newest first, keeping at
++// most maxEventsPerKind events of each kind.
++func BuildDigest(events []Event, now time.Time) Digest {
++	recent := filterOlderThan(events, now.Add(-24*time.Hour))
++	sort.Slice(recent, func(i, j int) bool { return recent[i].OccurredAt.After(recent[j].OccurredAt) })
++
++	d := Digest{GeneratedAt: now, ByKind: make(map[string][]Event)}
++	for _, e := range recent {
++		if len(d.ByKind[e.Kind]) >= maxEventsPerKind {
++			continue
++		}
++		d.ByKind[e.Kind] = append(d.ByKind[e.Kind], e)
++		d.Total++
++	}
++	return d
++}
++
++// filterOlderThan returns the events that occurred after cutoff.
++func filterOlderThan(events []Event, cutoff time.Time) []Event {
++	out := make([]Event, 0, len(events))
++	for _, e := range events {
++		if e.OccurredAt.After(cutoff) {
++			out = append(out, e)
++		}
++	}
++	return out
++}
++
++// dedupeByActor keeps the first event for each (kind, actor) pair.
++func dedupeByActor(events []Event) []Event {
++	seen := make(map[string]bool, len(events))
++	out := events[:0]
++	for _, e := range events {
++		key := e.Kind + "|" + e.Actor
++		if seen[key] {
++			continue
++		}
++		seen[key] = true
++		out = append(out, e)
++	}
++	return out
++}
+diff --git a/internal/notify/digest_test.go b/internal/notify/digest_test.go
+new file mode 100644
+index 0000000..19c5956
+--- /dev/null
++++ b/internal/notify/digest_test.go
+@@ -0,0 +1,42 @@
++package notify
++
++import (
++	"fmt"
++	"testing"
++	"time"
++)
++
++func TestBuildDigestKeepsOnlyTheLastDay(t *testing.T) {
++	now := time.Date(2026, 5, 4, 8, 0, 0, 0, time.UTC)
++	events := []Event{
++		{ID: "old", Kind: "comment", Actor: "ana", OccurredAt: now.Add(-25 * time.Hour)},
++		{ID: "new", Kind: "comment", Actor: "ben", OccurredAt: now.Add(-time.Hour)},
++		{ID: "newer", Kind: "mention", Actor: "ana", OccurredAt: now.Add(-time.Minute)},
++	}
++
++	d := BuildDigest(events, now)
++
++	if d.Total != 2 {
++		t.Fatalf("Total = %d, want 2", d.Total)
++	}
++	if got := d.ByKind["comment"]; len(got) != 1 || got[0].ID != "new" {
++		t.Fatalf("comments = %+v, want only the recent one", got)
++	}
++}
++
++func TestBuildDigestCapsEventsPerKind(t *testing.T) {
++	now := time.Date(2026, 5, 4, 8, 0, 0, 0, time.UTC)
++	var events []Event
++	for i := 0; i < maxEventsPerKind+5; i++ {
++		events = append(events, Event{ID: fmt.Sprint(i), Kind: "comment", OccurredAt: now.Add(-time.Duration(i) * time.Minute)})
++	}
++
++	d := BuildDigest(events, now)
++
++	if got := len(d.ByKind["comment"]); got != maxEventsPerKind {
++		t.Fatalf("len(comments) = %d, want %d", got, maxEventsPerKind)
++	}
++	if d.ByKind["comment"][0].ID != "0" {
++		t.Fatalf("first comment = %s, want the newest (0)", d.ByKind["comment"][0].ID)
++	}
++}

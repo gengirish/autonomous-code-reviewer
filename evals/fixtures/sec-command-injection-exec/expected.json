@@ -1,0 +1,3 @@
+[
+  { "file": "src/services/thumbnails.js", "lineStart": 26, "lineEnd": 26, "category": "command-injection", "minSeverity": "high", "agent": "security", "note": "exec() runs a shell; fileName carries the client-controlled multer originalname, so $(...) or a double quote in it escapes the quoting" }
+]

@@ -1,0 +1,8 @@
+{
+  "title": "Nightly job to purge abandoned carts",
+  "description": "Abandoned carts pile up forever (2.1M rows). This adds a nightly job that deletes carts in status `abandoned` not touched for 30 days, and registers it in the job list.",
+  "language": "typescript",
+  "tags": ["style", "lint-config", "consistency"],
+  "clean": false,
+  "notes": "head/.eslintrc.json is an unchanged repo file (not in pr.patch). FixturePrSource.getRepoFile serves it so the style agent receives it as a lint config. The new job violates three of its rules: no-restricted-imports (moment), import/no-default-export, no-console."
+}

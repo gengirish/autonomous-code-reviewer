@@ -1,0 +1,4 @@
+[
+  { "file": "src/services/inventory.js", "lineStart": 8, "lineEnd": 8, "category": "caller-not-updated", "minSeverity": "medium", "agent": "architecture", "note": "still calls retry(fn, 5, 250); with the new options-object signature the numbers are ignored and the defaults (3 attempts, 100ms) apply silently" },
+  { "file": "src/lib/retry.js", "lineStart": 17, "lineEnd": 17, "category": "breaking-change", "minSeverity": "medium", "agent": "architecture", "note": "positional parameters replaced by an options object with no compatibility shim; old-style calls do not fail, they silently fall back to defaults" }
+]

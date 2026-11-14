@@ -1,0 +1,97 @@
+diff --git a/src/routes/orders.ts b/src/routes/orders.ts
+index 5955ba4..d806374 100644
+--- a/src/routes/orders.ts
++++ b/src/routes/orders.ts
+@@ -7,6 +7,31 @@ export const ordersRouter = Router();
+ 
+ const OrderIdParams = z.object({ id: z.string().uuid() });
+ 
++const SORTABLE_COLUMNS = ["created_at", "total_cents", "status"];
++const DEFAULT_PAGE_SIZE = 20;
++const MAX_PAGE_SIZE = 100;
++
++ordersRouter.get("/orders", requireAuth, async (req, res, next) => {
++  try {
++    const status = typeof req.query.status === "string" ? req.query.status : undefined;
++    const sort =
++      typeof req.query.sort === "string" && SORTABLE_COLUMNS.includes(req.query.sort) ? req.query.sort : "created_at";
++    const requested = Number.parseInt(String(req.query.limit ?? DEFAULT_PAGE_SIZE), 10);
++    const limit = Math.min(Math.max(requested || DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE);
++
++    let sql = "SELECT id, status, total_cents, created_at FROM orders WHERE customer_id = $1";
++    if (status) {
++      sql += ` AND status = '${status}'`;
++    }
++    sql += ` ORDER BY ${sort} DESC LIMIT ${limit}`;
++
++    const { rows } = await pool.query(sql, [req.user.customerId]);
++    res.json({ orders: rows });
++  } catch (err) {
++    next(err);
++  }
++});
++
+ ordersRouter.get("/orders/:id", requireAuth, async (req, res, next) => {
+   try {
+     const { id } = OrderIdParams.parse(req.params);
+diff --git a/test/routes/orders.test.ts b/test/routes/orders.test.ts
+new file mode 100644
+index 0000000..17914a2
+--- /dev/null
++++ b/test/routes/orders.test.ts
+@@ -0,0 +1,55 @@
++import request from "supertest";
++import { beforeEach, describe, expect, it, vi } from "vitest";
++import { buildApp } from "../../src/app";
++import { pool } from "../../src/db/pool";
++
++vi.mock("../../src/db/pool", () => ({ pool: { query: vi.fn() } }));
++vi.mock("../../src/middleware/auth", () => ({
++  requireAuth: (req: { user?: { customerId: string } }, _res: unknown, next: () => void) => {
++    req.user = { customerId: "c_123" };
++    next();
++  },
++}));
++
++const query = vi.mocked(pool.query);
++
++describe("GET /orders", () => {
++  beforeEach(() => {
++    query.mockReset();
++  });
++
++  it("lists the caller's orders, newest first by default", async () => {
++    query.mockResolvedValueOnce({ rows: [{ id: "o1" }] } as never);
++
++    const res = await request(buildApp()).get("/orders");
++
++    expect(res.status).toBe(200);
++    expect(res.body).toEqual({ orders: [{ id: "o1" }] });
++    expect(query.mock.calls[0]?.[0]).toContain("ORDER BY created_at DESC LIMIT 20");
++    expect(query.mock.calls[0]?.[1]).toEqual(["c_123"]);
++  });
++
++  it("filters by status", async () => {
++    query.mockResolvedValueOnce({ rows: [] } as never);
++
++    await request(buildApp()).get("/orders?status=shipped");
++
++    expect(query.mock.calls[0]?.[0]).toContain("AND status = 'shipped'");
++  });
++
++  it("falls back to created_at for unknown sort columns", async () => {
++    query.mockResolvedValueOnce({ rows: [] } as never);
++
++    await request(buildApp()).get("/orders?sort=password_hash");
++
++    expect(query.mock.calls[0]?.[0]).toContain("ORDER BY created_at DESC");
++  });
++
++  it("caps the page size at 100", async () => {
++    query.mockResolvedValueOnce({ rows: [] } as never);
++
++    await request(buildApp()).get("/orders?limit=5000");
++
++    expect(query.mock.calls[0]?.[0]).toContain("LIMIT 100");
++  });
++});

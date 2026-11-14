@@ -1,0 +1,3 @@
+[
+  { "file": "app/billing/invoices.py", "lineStart": 41, "lineEnd": 43, "category": "import-cycle", "minSeverity": "medium", "agent": "architecture", "note": "billing.invoices now imports notifications.mailer, which already imports billing.invoices (line 8 there); the function-local import only hides the cycle" }
+]

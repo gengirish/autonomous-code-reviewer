@@ -1,0 +1,3 @@
+[
+  { "file": "app/config.py", "lineStart": 31, "lineEnd": 32, "category": "hardcoded-secret", "minSeverity": "high", "agent": "security", "note": "live Courierly key committed as the os.environ.get default, so every environment without the variable silently uses production credentials" }
+]
