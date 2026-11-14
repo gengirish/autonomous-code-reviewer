@@ -35,10 +35,12 @@ test/
     flow.test.ts              real Redis: 4 agents → judge → publish; one agent fails → judge still runs
     supersede.test.ts         new SHA → old run does no LLM or GitHub calls
   fakes/
-    fake-llm.ts               LlmClient returning recorded AgentReport/JudgeOutput by (agent, fixture)
-    fake-pr-source.ts         PrSource over evals/fixtures/<case>
-    fake-publisher.ts         records createReview payloads
-  fixtures/patches/*.patch
+    fake-llm.ts               FakeLlm (programmable responder, records requests) + byLabel()
+    fake-github.ts            FakePrSource (in-memory PR) + FakePublisher (records payloads, idempotent)
+    memory-context-store.ts   MemoryContextStore (ContextStore + latest-SHA guard)
+    builders.ts               aFinding / aCheckedFinding / aReport / aContext, SHA_A / SHA_B
+  unit/<area>/fixtures/       per-area fixtures (patches, sources)
+  (evals/fixture-source.ts provides FixturePrSource over evals/fixtures/<case>)
 ```
 
 ## Vitest config
