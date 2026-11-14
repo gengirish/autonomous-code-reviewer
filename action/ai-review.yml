@@ -1,0 +1,32 @@
+name: ai-review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  request-review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          REVIEWER_URL: ${{ vars.AI_REVIEWER_URL }}
+        with:
+          script: |
+            const token = await core.getIDToken('ai-reviewer');
+            const pr = context.payload.pull_request;
+            const res = await fetch(`${process.env.REVIEWER_URL}/hooks/pr`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                owner: context.repo.owner, repo: context.repo.repo,
+                pr: pr.number, baseSha: pr.base.sha, headSha: pr.head.sha,
+              }),
+            });
+            if (res.status !== 202) core.setFailed(`reviewer ${res.status}: ${await res.text()}`);
