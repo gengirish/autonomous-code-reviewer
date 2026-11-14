@@ -20,3 +20,7 @@ Thumbs.db
 
 # prisma generated client
 src/db/generated/
+
+# parallel-build worktrees
+.worktrees/
+.claude/worktrees/
