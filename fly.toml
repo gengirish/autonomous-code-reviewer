@@ -1,0 +1,43 @@
+# Fly.io config (acr-deploy). Two process groups from one image.
+app = "ai-code-reviewer"          # change to a unique app name before `fly launch`
+primary_region = "bom"
+kill_signal = "SIGTERM"
+kill_timeout = 60                 # let in-flight Claude calls finish
+
+[deploy]
+  release_command = "npx prisma migrate deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  REDIS_FAMILY = "6"              # Fly private network (Upstash via `fly redis create`) is IPv6
+  OIDC_AUDIENCE = "ai-reviewer"
+
+[processes]
+  web = "node dist/server/index.js"
+  worker = "node dist/worker/index.js"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["web"]
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["web"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  processes = ["worker"]

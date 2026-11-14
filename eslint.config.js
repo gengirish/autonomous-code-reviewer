@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/", "node_modules/", "coverage/", "src/db/generated/", "evals/results/", ".worktrees/", ".claude/worktrees/"] },
+  { ignores: ["dist/", "node_modules/", "coverage/", "src/db/generated/", "evals/results/", ".worktrees/", ".claude/worktrees/", "evals/fixtures/"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

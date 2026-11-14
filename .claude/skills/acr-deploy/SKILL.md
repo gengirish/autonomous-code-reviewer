@@ -25,24 +25,18 @@ Fly app: ai-code-reviewer
 
 ## Dockerfile (multi-stage)
 
-```dockerfile
-FROM node:22-slim AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npx prisma generate && npm run build      # build also copies src/parser/grammars/*.wasm → dist/
+The real file is `Dockerfile` at the repo root (verified: image builds, `/healthz` serves,
+`npx prisma migrate deploy` runs, worker fails fast without secrets). Gotchas it encodes:
 
-FROM node:22-slim
-WORKDIR /app
-ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-USER node
-```
+- `prisma` is a **runtime dependency** (the `release_command` runs `prisma migrate deploy` in the image).
+- The runtime stage needs **OpenSSL** for Prisma's migrate engine, and **must not** use
+  `npm ci --ignore-scripts`. The install scripts download that engine.
+- The Prisma 7 client is generated into `src/db/generated/` and compiled into `dist/`. The build
+  stage needs `prisma generate` before `tsc`.
+- `npm run build` copies grammars, agent prompts and judge prompt/rubric into `dist/` (`scripts/copy-assets.mjs`).
+- The image is about 1 GB (Prisma engines included). Slimming it is a phase 7 task.
+
+Local check: `docker build -t acr:local . && docker run --rm -p 8098:8080 -e REDIS_URL=redis://host.docker.internal:6379 acr:local`.
 
 ## fly.toml
 
