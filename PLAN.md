@@ -168,6 +168,29 @@ Dockerfile  fly.toml  .env.example
 
 About 11–12 working days in total. Phases 2 and 3 can overlap once the `ReviewContext` type is fixed.
 
+### Status (2026-11-14)
+
+Built in one session: phase 0 by the lead, then 8 parallel builders in separate git worktrees against
+the frozen contracts in `src/core/ports.ts`, then merged and wired by the lead.
+
+| # | Status | Notes |
+|---|---|---|
+| 0 | ✅ | Scaffold, contracts, fakes, vendored grammars, docker compose |
+| 1 | ✅ code · ⏳ live | Action workflows, OIDC-verified `/hooks/pr`, queue, worker, GitHub layer. The live path needs a GitHub App + sandbox repo |
+| 2 | ✅ | Diff map, tree-sitter symbols (TS/TSX/JS/Python/Go), ReviewContext, chunking, byte-stable renderer |
+| 3 | ✅ code · ⏳ live | 4 agents + prompts + hints, Anthropic client (structured outputs, fallbacks, cache layout). Prompts not yet evaluated live |
+| 4 | ✅ code · ⏳ live | Judge, verdict rule, renderer, publisher (422 fallback, idempotency marker) |
+| 5 | ✅ harness · ⏳ first run | 16 fixtures (target 25–30), metrics, report, baseline rule, `npm run eval` (dry run unless `--yes`) |
+| 6 | 🟡 | Dockerfile and fly.toml verified locally; not deployed |
+| 7 | ⬜ | Supersede ✅ and fork path ✅ are done early; per-repo config, cost guardrail, check runs, README remain |
+| 8 | ⬜ | Pilot repo and measurement |
+
+Verified: typecheck, lint, 473 unit tests (incl. an offline end-to-end pipeline test), 19 integration
+tests (real Redis + Postgres), production build, Docker image (web serves, `migrate deploy` runs).
+
+Next human steps: create the GitHub App (sandbox), set `ANTHROPIC_API_KEY`, run the first eval
+(`npm run eval -- --yes`, about $5–10 for 16 cases), then deploy to Fly.
+
 ---
 
 ## 6. Evaluation and the 70% claim
