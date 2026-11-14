@@ -16,7 +16,10 @@
     "test:integration": "vitest run --project integration",
     "eval": "tsx evals/run-eval.ts",
     "db:migrate": "prisma migrate dev",
-    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs"
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
