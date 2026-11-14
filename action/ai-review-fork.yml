@@ -1,0 +1,53 @@
+# ai-review for PRs opened from forks.
+#
+# Why pull_request_target: a `pull_request` run triggered from a fork gets no
+# `id-token: write`, so it can't mint the OIDC token the reviewer requires.
+# `pull_request_target` runs in the context of the BASE repository (base-repo
+# workflow file, base-repo permissions), so it can.
+#
+# Why this is safe: pull_request_target is only dangerous when the job checks out
+# or executes code from the PR head, because that code would then run with the
+# base repo's permissions. This job does neither:
+#   - it NEVER runs actions/checkout (no PR files ever touch the runner);
+#   - it never executes, installs or builds anything from the PR;
+#   - it reads only numbers and SHAs from the event payload as JavaScript values
+#     (no `${{ github.event.pull_request.* }}` text is interpolated into the script,
+#     so a malicious title/branch name cannot inject code);
+#   - its only output is an authenticated POST of {owner, repo, pr, baseSha, headSha}.
+# The reviewer re-reads the PR through the GitHub API itself and never runs PR code.
+#
+# KEEP IT THAT WAY: do not add a checkout step, a build/test step, or any
+# `${{ github.event.* }}` expression inside `script:` to this workflow.
+name: ai-review-fork
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: ai-review-fork-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  request-review:
+    # Same-repo PRs are handled by ai-review.yml; this workflow only serves forks.
+    if: github.event.pull_request.head.repo.fork == true && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          REVIEWER_URL: ${{ vars.AI_REVIEWER_URL }}
+        with:
+          script: |
+            const token = await core.getIDToken('ai-reviewer');
+            const pr = context.payload.pull_request;
+            const res = await fetch(`${process.env.REVIEWER_URL}/hooks/pr`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                owner: context.repo.owner, repo: context.repo.repo,
+                pr: pr.number, baseSha: pr.base.sha, headSha: pr.head.sha,
+              }),
+            });
+            if (res.status !== 202) core.setFailed(`reviewer ${res.status}: ${await res.text()}`);
