@@ -1,6 +1,6 @@
 # Fly.io config (acr-deploy). Two process groups from one image.
-app = "ai-code-reviewer"          # change to a unique app name before `fly launch`
-primary_region = "bom"
+app = "ai-code-reviewer-gengirish"
+primary_region = "sin"
 kill_signal = "SIGTERM"
 kill_timeout = 60                 # let in-flight Claude calls finish
 

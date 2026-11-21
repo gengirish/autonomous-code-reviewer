@@ -16,7 +16,7 @@ Read-only commands (`fly status`, `fly logs`) are fine.
 ## Topology
 
 ```
-Fly app: ai-code-reviewer
+Fly app: ai-code-reviewer-gengirish  (region sin; "ai-code-reviewer" is taken on Fly)
   process "web"     Fastify :8080, http_service, auto-stop allowed (min 0)
   process "worker"  BullMQ workers, no http, always 1 running
   Upstash Redis     fly redis create (private IPv6 URL)
@@ -41,8 +41,8 @@ Local check: `docker build -t acr:local . && docker run --rm -p 8098:8080 -e RED
 ## fly.toml
 
 ```toml
-app = "ai-code-reviewer"          # pick a unique name
-primary_region = "bom"            # closest to the user; change if needed
+app = "ai-code-reviewer-gengirish"
+primary_region = "sin"            # Upstash rejects bom for new DBs; Neon is ap-southeast-1 too
 kill_signal = "SIGTERM"
 kill_timeout = 60                 # let in-flight Claude calls finish (acr-queue shutdown)
 
@@ -86,7 +86,10 @@ keeps paid resources awake (`idle-cost-audit`).
 
 ```bash
 fly launch --no-deploy                      # creates the app; keep the fly.toml above
-fly redis create                            # note the redis://…upstash.io URL
+fly redis create --name ai-code-reviewer-redis --region sin --no-replicas \
+  --disable-eviction --plan "Pay-as-you-go" --enable-prodpack=false   # BullMQ needs eviction off
+# Done 2026-11-21: app, Redis, Neon project ai-code-reviewer-db, web deployed with
+#   fly deploy --ha=false --process-groups web --remote-only
 fly secrets set ANTHROPIC_API_KEY=… GITHUB_APP_ID=… GITHUB_APP_PRIVATE_KEY_B64=… \
   REDIS_URL=… DATABASE_URL=… DIRECT_URL=… OIDC_AUDIENCE=ai-reviewer ALLOWED_OWNERS=<owner> \
   BULL_BOARD_USER=… BULL_BOARD_PASSWORD=…
