@@ -98,7 +98,9 @@ Rules:
 4. Reply `202 { runId }` within about 200 ms. No GitHub or Claude calls in this process.
 
 Also `GET /healthz` (no dependencies; Fly health check) and Bull Board at `/admin/queues`
-behind basic auth (`@bull-board/api` + `@bull-board/fastify`).
+behind basic auth (`@bull-board/api` + `@bull-board/fastify`). `GET /admin/stats/runs?owner=&repo=&days=`
+(same basic auth, Zod-validated query, `days` 1–365, default 30) reads through the injected
+`StatsReader` port. It is only registered when admin credentials are set, so it fails closed.
 
 ## Tests
 

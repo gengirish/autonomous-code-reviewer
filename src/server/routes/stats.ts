@@ -1,27 +1,31 @@
 import type { FastifyInstance } from "fastify";
-import { createPrisma } from "../../db/client.js";
+import { z } from "zod";
+import type { StatsReader } from "../../core/ports.js";
 
-// Public dashboard stats: review count, average cost and latency per repo.
-export async function statsRoutes(app: FastifyInstance) {
-  app.get("/stats/runs", async (request: any, reply: any) => {
-    const db = createPrisma(process.env.DATABASE_URL!);
-    const repo = request.query.repo;
-    const days = request.query.days || 30;
+/** GitHub owner/repo name characters; also keeps the values short and log-safe. */
+const GITHUB_NAME = /^[A-Za-z0-9_.-]{1,100}$/;
 
-    console.log("stats request", repo, days);
+export const StatsQuery = z.object({
+  owner: z.string().regex(GITHUB_NAME),
+  repo: z.string().regex(GITHUB_NAME),
+  days: z.coerce.number().int().min(1).max(365).default(30),
+});
 
-    const rows: any = await db.$queryRawUnsafe(
-      `SELECT repo, count(*) AS runs, avg("costUsd") AS avg_cost, avg("latencyMs") AS avg_latency
-         FROM "ReviewRun"
-        WHERE repo = '${repo}' AND "createdAt" > now() - interval '${days} days'
-        GROUP BY repo`,
-    );
-
-    let result = [];
-    for (let i = 0; i < rows.length; i++) {
-      result.push({ repo: rows[i].repo, runs: Number(rows[i].runs), avgCost: rows[i].avg_cost, avgLatency: rows[i].avg_latency });
+/**
+ * GET /stats/runs?owner=&repo=&days= — review count, average cost and latency for one repo.
+ * Registered by buildServer under /admin, behind basic auth; never public.
+ */
+export async function statsRoutes(app: FastifyInstance, stats: StatsReader): Promise<void> {
+  app.get("/stats/runs", async (request, reply) => {
+    const parsed = StatsQuery.safeParse(request.query);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid query", issues: parsed.error.issues });
     }
-    if (result.length == 0) return reply.code(404).send({ error: "no runs for " + repo });
+    const { owner, repo, days } = parsed.data;
+
+    request.log.info({ owner, repo, days }, "stats request");
+    const result = await stats.repoStats(owner, repo, days);
+    if (!result) return reply.code(404).send({ error: "no runs in window" });
     return result;
   });
 }

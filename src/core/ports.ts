@@ -138,6 +138,23 @@ export interface RunRecorder {
   runFinished(runId: string, result: { verdict: ReviewEvent; reviewId: number; costUsd: number; latencyMs: number; chunks: number }): Promise<void>;
 }
 
+/** Aggregate review stats for one repository over a recent window (admin dashboard). */
+export interface RunStats {
+  owner: string;
+  repo: string;
+  sinceDays: number;
+  runs: number;
+  /** Null when no run in the window has a recorded value. */
+  avgCostUsd: number | null;
+  avgLatencyMs: number | null;
+}
+
+/** Read side of src/db for the web process. Inputs are validated by the caller. */
+export interface StatsReader {
+  /** Null when the repository has no runs in the window. */
+  repoStats(owner: string, repo: string, sinceDays: number): Promise<RunStats | null>;
+}
+
 // ───────────────────────────── Pipeline functions ─────────────────────────────
 
 /** src/parser/index.ts → `export const buildReviewContext: BuildReviewContext` */

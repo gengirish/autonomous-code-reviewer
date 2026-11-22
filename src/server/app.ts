@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import type { FastifyError, FastifyInstance, FastifyPluginAsync } from "fastify";
 import { ForbiddenError, UnauthorizedError } from "../core/errors.js";
-import type { HookDeps } from "../core/ports.js";
+import type { HookDeps, StatsReader } from "../core/ports.js";
 import { basicAuthHook } from "./auth/basic.js";
 import type { BasicCredentials } from "./auth/basic.js";
 import { healthRoutes } from "./routes/health.js";
@@ -11,6 +11,8 @@ import { statsRoutes } from "./routes/stats.js";
 export type ServerDeps = HookDeps & {
   /** Mounted under /admin behind basic auth (e.g. Bull Board). Requires `admin`. */
   adminPlugin?: FastifyPluginAsync;
+  /** Serves GET /admin/stats/runs behind basic auth. Ignored unless `admin` is set. */
+  stats?: StatsReader;
   admin?: BasicCredentials;
   /** Fastify logger option. Default false. Never logs request headers (so never the token). */
   logger?: boolean | object;
@@ -44,7 +46,6 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   await app.register(healthRoutes);
-  await app.register(statsRoutes);
   await app.register(async (scope) => hookRoutes(scope, deps));
 
   if (deps.adminPlugin && deps.admin) {
@@ -55,6 +56,18 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
         // Hooks added here apply to every route the admin plugin registers (encapsulation).
         scope.addHook("onRequest", auth);
         await scope.register(adminPlugin);
+      },
+      { prefix: "/admin" },
+    );
+  }
+
+  if (deps.stats && deps.admin) {
+    const stats = deps.stats;
+    const auth = basicAuthHook(deps.admin);
+    await app.register(
+      async (scope) => {
+        scope.addHook("onRequest", auth);
+        await statsRoutes(scope, stats);
       },
       { prefix: "/admin" },
     );

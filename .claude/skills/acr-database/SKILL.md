@@ -104,6 +104,9 @@ counts, titles and locations. Code belongs to the target repos.
 
 - Prisma Client is used by the **worker** (write path) and admin/metrics scripts. The web
   process only writes the initial `QUEUED` row (or nothing; it's fine to create the row in prepare).
+- The web process gets `createDbFromEnv()` → `{ recorder, stats, close }` (one pool for both).
+  `stats` is the `StatsReader` port (`src/db/stats.ts`): typed `reviewRun.aggregate` only,
+  never `$queryRawUnsafe`. Routes never call `createPrisma` themselves.
 - Writes are upserts keyed by `runId` so BullMQ retries are safe.
 - Money is `Decimal`, never float.
 - Connection: in production use the pooled URL (Neon pooler or Fly Postgres via PgBouncer)

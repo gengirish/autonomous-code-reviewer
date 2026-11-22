@@ -6,7 +6,9 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        test: { name: "unit", include: ["test/unit/**/*.test.ts"] },
+        // The first test in a Fastify file pays cold module/JIT cost; under full parallel load
+        // on Windows that alone can pass the 5 s default. Real hangs still fail at 15 s.
+        test: { name: "unit", include: ["test/unit/**/*.test.ts"], testTimeout: 15_000 },
       },
       {
         extends: true,
