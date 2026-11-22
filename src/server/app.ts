@@ -6,6 +6,7 @@ import { basicAuthHook } from "./auth/basic.js";
 import type { BasicCredentials } from "./auth/basic.js";
 import { healthRoutes } from "./routes/health.js";
 import { hookRoutes } from "./routes/hook.js";
+import { statsRoutes } from "./routes/stats.js";
 
 export type ServerDeps = HookDeps & {
   /** Mounted under /admin behind basic auth (e.g. Bull Board). Requires `admin`. */
@@ -43,6 +44,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   await app.register(healthRoutes);
+  await app.register(statsRoutes);
   await app.register(async (scope) => hookRoutes(scope, deps));
 
   if (deps.adminPlugin && deps.admin) {
