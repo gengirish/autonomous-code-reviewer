@@ -181,15 +181,15 @@ the frozen contracts in `src/core/ports.ts`, then merged and wired by the lead.
 | 3 | ✅ code · ⏳ live | 4 agents + prompts + hints, Anthropic client (structured outputs, fallbacks, cache layout). Prompts not yet evaluated live |
 | 4 | ✅ code · ⏳ live | Judge, verdict rule, renderer, publisher (422 fallback, idempotency marker) |
 | 5 | ✅ harness · ⏳ first run | 16 fixtures (target 25–30), metrics, report, baseline rule, `npm run eval` (dry run unless `--yes`) |
-| 6 | 🟡 | Dockerfile and fly.toml verified locally; not deployed |
+| 6 | ✅ | `ai-code-reviewer-gengirish` on Fly (`sin`): web + worker, Neon `ai-code-reviewer-db` (ap-southeast-1), Upstash `ai-code-reviewer-redis` (`sin`, eviction off). GitHub App `ai-reviewer-gengirish` installed on this repo only. Live smoke 2026-11-22: PR #1 COMMENT (no issues, $0.17), PR #2 seeded SQL injection flagged inline high/security, REQUEST_CHANGES ($0.13 agents) |
 | 7 | ⬜ | Supersede ✅ and fork path ✅ are done early; per-repo config, cost guardrail, check runs, README remain |
 | 8 | ⬜ | Pilot repo and measurement |
 
 Verified: typecheck, lint, 473 unit tests (incl. an offline end-to-end pipeline test), 19 integration
 tests (real Redis + Postgres), production build, Docker image (web serves, `migrate deploy` runs).
 
-Next human steps: create the GitHub App (sandbox), set `ANTHROPIC_API_KEY`, run the first eval
-(`npm run eval -- --yes`, about $5–10 for 16 cases), then deploy to Fly.
+Next steps: run the first eval (`npm run eval -- --yes`, about $5–10 for 16 cases) to set
+`evals/baseline.json`, then phase 7.
 
 ---
 
