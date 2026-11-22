@@ -1,15 +1,18 @@
 import Fastify from "fastify";
 import type { FastifyError, FastifyInstance, FastifyPluginAsync } from "fastify";
 import { ForbiddenError, UnauthorizedError } from "../core/errors.js";
-import type { HookDeps } from "../core/ports.js";
+import type { HookDeps, StatsReader } from "../core/ports.js";
 import { basicAuthHook } from "./auth/basic.js";
 import type { BasicCredentials } from "./auth/basic.js";
 import { healthRoutes } from "./routes/health.js";
 import { hookRoutes } from "./routes/hook.js";
+import { statsRoutes } from "./routes/stats.js";
 
 export type ServerDeps = HookDeps & {
   /** Mounted under /admin behind basic auth (e.g. Bull Board). Requires `admin`. */
   adminPlugin?: FastifyPluginAsync;
+  /** Serves GET /admin/stats/runs behind basic auth. Ignored unless `admin` is set. */
+  stats?: StatsReader;
   admin?: BasicCredentials;
   /** Fastify logger option. Default false. Never logs request headers (so never the token). */
   logger?: boolean | object;
@@ -18,6 +21,11 @@ export type ServerDeps = HookDeps & {
 export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   if (deps.adminPlugin && (!deps.admin?.user || !deps.admin.password)) {
     throw new Error("adminPlugin requires admin credentials (BULL_BOARD_USER / BULL_BOARD_PASSWORD)");
+  }
+  // Covers every /admin feature (Bull Board and stats): blank credentials are a startup error.
+  // `stats` without `admin` is not an error: the route is simply not registered (fails closed).
+  if (deps.admin && (!deps.admin.user || !deps.admin.password)) {
+    throw new Error("admin credentials must have a non-empty user and password (BULL_BOARD_USER / BULL_BOARD_PASSWORD)");
   }
 
   const app = Fastify({
@@ -45,14 +53,17 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(async (scope) => hookRoutes(scope, deps));
 
-  if (deps.adminPlugin && deps.admin) {
-    const adminPlugin = deps.adminPlugin;
+  // One /admin scope behind basic auth for everything admin (Bull Board, stats). Without
+  // credentials nothing under /admin is registered: it fails closed.
+  const { adminPlugin, stats } = deps;
+  if (deps.admin && (adminPlugin || stats)) {
     const auth = basicAuthHook(deps.admin);
     await app.register(
       async (scope) => {
-        // Hooks added here apply to every route the admin plugin registers (encapsulation).
+        // Hooks added here apply to every route registered in this scope (encapsulation).
         scope.addHook("onRequest", auth);
-        await scope.register(adminPlugin);
+        if (adminPlugin) await scope.register(adminPlugin);
+        if (stats) await statsRoutes(scope, stats);
       },
       { prefix: "/admin" },
     );

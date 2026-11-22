@@ -8,7 +8,7 @@ import { FastifyAdapter } from "@bull-board/fastify";
 import { Queue } from "bullmq";
 import type { FastifyPluginAsync } from "fastify";
 import { logger } from "../core/logger.js";
-import { createRecorderFromEnv } from "../db/index.js";
+import { createDbFromEnv } from "../db/index.js";
 import { getEnv } from "../env.js";
 import { createPrepareEnqueuer, createRedis } from "../queue/index.js";
 import { Q } from "../schemas/index.js";
@@ -18,7 +18,7 @@ import { createActionsVerifier } from "./auth/oidc.js";
 async function main() {
   const env = getEnv();
   const connection = createRedis(env.REDIS_URL, env.REDIS_FAMILY);
-  const recorder = createRecorderFromEnv(env.DATABASE_URL);
+  const db = createDbFromEnv(env.DATABASE_URL);
   const prepareQueue = new Queue(Q.prepare, { connection });
 
   const admin =
@@ -47,8 +47,9 @@ async function main() {
 
   const app = await buildServer({
     verifyToken: createActionsVerifier({ audience: env.OIDC_AUDIENCE, allowedOwners: env.ALLOWED_OWNERS }),
-    enqueuePrepare: createPrepareEnqueuer(prepareQueue, { recorder }),
+    enqueuePrepare: createPrepareEnqueuer(prepareQueue, { recorder: db.recorder }),
     adminPlugin,
+    stats: db.stats,
     admin,
     logger: { level: env.LOG_LEVEL },
   });
@@ -57,7 +58,7 @@ async function main() {
     logger.info({ signal }, "web shutting down");
     await app.close();
     await Promise.all([prepareQueue, ...boardQueues].map((q) => q.close()));
-    await recorder.close();
+    await db.close();
     await connection.quit();
     process.exit(0);
   };
