@@ -22,6 +22,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   if (deps.adminPlugin && (!deps.admin?.user || !deps.admin.password)) {
     throw new Error("adminPlugin requires admin credentials (BULL_BOARD_USER / BULL_BOARD_PASSWORD)");
   }
+  // Covers every /admin feature (Bull Board and stats): blank credentials are a startup error.
+  // `stats` without `admin` is not an error: the route is simply not registered (fails closed).
+  if (deps.admin && (!deps.admin.user || !deps.admin.password)) {
+    throw new Error("admin credentials must have a non-empty user and password (BULL_BOARD_USER / BULL_BOARD_PASSWORD)");
+  }
 
   const app = Fastify({
     logger: deps.logger ?? false,

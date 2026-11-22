@@ -118,6 +118,13 @@ describe("GET /admin/stats/runs", () => {
     expect(stats.calls).toEqual([]);
   });
 
+  it.each([
+    ["empty user", { user: "", password: "s3cret" }],
+    ["empty password", { user: "admin", password: "" }],
+  ])("refuses to start with stats and %s", async (_name, admin) => {
+    await expect(server({ admin, stats: fakeStats().reader })).rejects.toThrow(/non-empty user and password/);
+  });
+
   it("shares one /admin auth scope with the admin plugin", async () => {
     const adminPlugin = async (scope: FastifyInstance) => {
       scope.get("/queues", async () => ({ board: true }));
