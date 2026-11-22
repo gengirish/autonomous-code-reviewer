@@ -48,26 +48,17 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(async (scope) => hookRoutes(scope, deps));
 
-  if (deps.adminPlugin && deps.admin) {
-    const adminPlugin = deps.adminPlugin;
+  // One /admin scope behind basic auth for everything admin (Bull Board, stats). Without
+  // credentials nothing under /admin is registered: it fails closed.
+  const { adminPlugin, stats } = deps;
+  if (deps.admin && (adminPlugin || stats)) {
     const auth = basicAuthHook(deps.admin);
     await app.register(
       async (scope) => {
-        // Hooks added here apply to every route the admin plugin registers (encapsulation).
+        // Hooks added here apply to every route registered in this scope (encapsulation).
         scope.addHook("onRequest", auth);
-        await scope.register(adminPlugin);
-      },
-      { prefix: "/admin" },
-    );
-  }
-
-  if (deps.stats && deps.admin) {
-    const stats = deps.stats;
-    const auth = basicAuthHook(deps.admin);
-    await app.register(
-      async (scope) => {
-        scope.addHook("onRequest", auth);
-        await statsRoutes(scope, stats);
+        if (adminPlugin) await scope.register(adminPlugin);
+        if (stats) await statsRoutes(scope, stats);
       },
       { prefix: "/admin" },
     );

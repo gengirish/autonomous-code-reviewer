@@ -118,6 +118,19 @@ describe("GET /admin/stats/runs", () => {
     expect(stats.calls).toEqual([]);
   });
 
+  it("shares one /admin auth scope with the admin plugin", async () => {
+    const adminPlugin = async (scope: FastifyInstance) => {
+      scope.get("/queues", async () => ({ board: true }));
+    };
+    const a = await server({ admin: ADMIN, adminPlugin, stats: fakeStats().reader });
+    expect((await a.inject({ method: "GET", url: "/admin/queues", headers: { authorization: AUTH } })).json()).toEqual({
+      board: true,
+    });
+    expect((await get(a, "?owner=octo&repo=demo")).statusCode).toBe(200);
+    expect((await a.inject({ method: "GET", url: "/admin/queues" })).statusCode).toBe(401);
+    expect((await get(a, "?owner=octo&repo=demo", null)).statusCode).toBe(401);
+  });
+
   it("is not served on the old public path", async () => {
     const a = await server({ admin: ADMIN, stats: fakeStats().reader });
     const res = await a.inject({ method: "GET", url: "/stats/runs?owner=octo&repo=demo" });
